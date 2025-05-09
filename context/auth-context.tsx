@@ -1,8 +1,9 @@
 "use client"
 
 import type React from "react"
-
 import { createContext, useContext, useState, useEffect } from "react"
+import { prisma } from '@/lib/db'
+import bcrypt from 'bcryptjs'
 
 type User = {
   id: string
@@ -34,44 +35,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const login = async (email: string, password: string) => {
-    // Mock API call
     setIsLoading(true)
     try {
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // In a real app, this would be an API call to validate credentials
-      if (email && password) {
-        const newUser = {
-          id: "user-1",
-          name: email.split("@")[0],
-          email,
-        }
-        setUser(newUser)
-        localStorage.setItem("user", JSON.stringify(newUser))
-        return
-      }
-      throw new Error("Invalid credentials")
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      })
+      if (!res.ok) throw new Error('Invalid credentials')
+      const user = await res.json()
+      setUser(user)
+      localStorage.setItem("user", JSON.stringify(user))
     } finally {
       setIsLoading(false)
     }
   }
 
   const register = async (name: string, email: string, password: string) => {
-    // Mock API call
     setIsLoading(true)
     try {
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // In a real app, this would be an API call to create a new user
-      const newUser = {
-        id: "user-" + Date.now(),
-        name,
-        email,
-      }
-      setUser(newUser)
-      localStorage.setItem("user", JSON.stringify(newUser))
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, password }),
+      })
+      if (!res.ok) throw new Error('Registration failed')
+      const user = await res.json()
+      setUser(user)
+      localStorage.setItem("user", JSON.stringify(user))
     } finally {
       setIsLoading(false)
     }

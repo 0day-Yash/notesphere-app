@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { BookOpenText, Search, User, LogOut, Menu } from "lucide-react"
+import { useCallback } from "react"
 
 export function Header() {
   const { user, logout } = useAuth()
@@ -28,11 +29,11 @@ export function Header() {
     router.push("/")
   }
 
-  const handleToggleVisibility = () => {
-    if (currentNote) {
+  const handleToggleVisibility = useCallback((newValue: boolean) => {
+    if (currentNote && newValue !== currentNote.isPublic) {
       toggleNoteVisibility(currentNote.id)
     }
-  }
+  }, [currentNote, toggleNoteVisibility])
 
   return (
     <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -58,10 +59,11 @@ export function Header() {
           </form>
           {currentNote && (
             <div className="flex items-center gap-2">
-              <Switch id="visibility-mode" checked={currentNote.isPublic} onCheckedChange={handleToggleVisibility} />
-              <Label htmlFor="visibility-mode" className="text-sm font-medium">
-                {currentNote.isPublic ? "Public" : "Private"}
-              </Label>
+              <Switch
+                id="visibility-mode"
+                checked={currentNote.isPublic}
+                onCheckedChange={handleToggleVisibility}
+              />
             </div>
           )}
           <ModeToggle />

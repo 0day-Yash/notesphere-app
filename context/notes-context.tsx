@@ -5,6 +5,8 @@ import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import type { Note, Folder } from "@/types"
+import * as NotesService from '@/lib/notes'
+import { useAuth } from "@/context/auth-context"
 
 type NotesContextType = {
   notes: Note[]
@@ -29,8 +31,30 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
   const pathname = usePathname()
+  const { user } = useAuth()
 
   useEffect(() => {
+    const loadNotes = async () => {
+      if (user) {
+        setIsLoading(true)
+        try {
+          const fetchedNotes = await NotesService.getNotes(user.id)
+          setNotes(fetchedNotes)
+        } catch (error) {
+          console.error("Failed to load notes:", error)
+          // Fallback to localStorage if database fails
+          const storedNotes = localStorage.getItem("notes")
+          if (storedNotes) {
+            setNotes(JSON.parse(storedNotes))
+          }
+        } finally {
+          setIsLoading(false)
+        }
+      }
+    }
+    
+    loadNotes()
+    
     // Load notes from localStorage
     const storedNotes = localStorage.getItem("notes")
     const storedFolders = localStorage.getItem("folders")
@@ -80,7 +104,7 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     }
 
     setIsLoading(false)
-  }, [])
+  }, [user])
 
   // Update current note based on URL
   useEffect(() => {
@@ -113,20 +137,34 @@ export function NotesProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("folders", JSON.stringify(updatedFolders))
   }
 
-  const createNote = () => {
-    const newNote: Note = {
-      id: `note-${Date.now()}`,
-      title: "Untitled Note",
-      content: "",
-      isPublic: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      isActive: false,
+  const createNote = async () => {
+    if (!user) return
+    
+    try {
+      const newNote = await NotesService.createNote(user.id, {
+        title: "Untitled Note",
+        content: "",
+        isPublic: false
+      })
+      
+      setNotes(prev => [...prev, newNote])
+      router.push(`/note/${newNote.id}`)
+    } catch (error) {
+      console.error("Failed to create note:", error)
+      // Fallback to local implementation
+      const newNote: Note = {
+        id: `note-${Date.now()}`,
+        title: "Untitled Note",
+        content: "",
+        isPublic: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isActive: false,
+      }
+      
+      setNotes(prev => [...prev, newNote])
+      router.push(`/note/${newNote.id}`)
     }
-
-    const updatedNotes = [...notes, newNote]
-    saveNotes(updatedNotes)
-    router.push(`/note/${newNote.id}`)
   }
 
   const updateNote = (id: string, data: Partial<Note>) => {
@@ -207,3 +245,7 @@ export function useNotes() {
   }
   return context
 }
+
+// Remove these functions at the bottom - they're causing issues
+// const loadNotes = async (userId: string) => { ... }
+// const addNote = async (userId: string, title: string, content: string) => { ... }

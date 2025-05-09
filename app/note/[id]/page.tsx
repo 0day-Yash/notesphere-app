@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/context/auth-context"
 import { useNotes } from "@/context/notes-context"
@@ -9,11 +9,15 @@ import { Header } from "@/components/header"
 import { Sidebar } from "@/components/sidebar"
 import type { Note } from "@/types"
 
-export default function NotePage({ params }: { params: { id: string } }) {
+export default function NotePage({ params }: { params: { id: string } | Promise<{ id: string }> }) {
   const { user, isLoading: authLoading } = useAuth()
   const { getNoteById, isLoading: notesLoading } = useNotes()
   const [note, setNote] = useState<Note | null>(null)
   const router = useRouter()
+
+  // Unwrap params if it's a Promise (Next.js 14+)
+  const unwrappedParams = typeof params.then === "function" ? React.use(params) : params
+  const noteId = unwrappedParams?.id
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -22,15 +26,15 @@ export default function NotePage({ params }: { params: { id: string } }) {
   }, [user, authLoading, router])
 
   useEffect(() => {
-    if (params.id && user) {
-      const fetchedNote = getNoteById(params.id)
+    if (noteId && user) {
+      const fetchedNote = getNoteById(noteId)
       if (fetchedNote) {
         setNote(fetchedNote)
       } else {
         router.push("/dashboard")
       }
     }
-  }, [params.id, user, getNoteById, router])
+  }, [noteId, user, getNoteById, router])
 
   if (authLoading || notesLoading) {
     return (
